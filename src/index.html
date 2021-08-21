@@ -1,0 +1,47 @@
+<html>
+  <head>
+    <title>Takanosuke App</title>
+    <link rel="stylesheet" href="index.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <div id="overlay"></div>
+    <div id="container">
+      <div>
+        <p id="lyrics">
+          <span id="text"></span>
+        </p>
+      </div>
+    </div>
+    <div id="media"></div>
+    <div id="header">
+      <div id="control" style="display: none">
+        <button class="play" disabled>再生</button>
+        <button id="jump" disabled>歌詞頭出し</button>
+        <button id="open-settings" disabled>設定開く</button>
+      </div>
+      <div id="settings" style="display: none">
+        <div id="meta">
+          <div id="artist"><strong>artist:</strong> <span>-</span></div>
+          <div id="song"><strong>song:</strong> <span>-</span></div>
+        </div>
+        <p id="message">ビデオの準備が完了！！</p>
+        <p>
+          <span id="position"><strong>-</strong> [ms]</span>
+        </p>
+        <button id="pause" disabled>一時停止</button>
+        <button id="rewind" disabled>巻き戻し</button>
+        <select id="song-select">
+          <option value="blues / First Note">blues / First Note</option>
+          <option value="chiquewa / Freedom!">chiquewa / Freedom!</option>
+          <option value="ラテルネ / その心に灯る色は">ラテルネ / その心に灯る色は</option>
+          <option value="真島ゆろ / 嘘も本当も君だから">真島ゆろ / 嘘も本当も君だから</option>
+          <option value="シロクマ消しゴム / 夏をなぞって">シロクマ消しゴム / 夏をなぞって</option>
+          <option value="濁茶 / 密かなる交信曲">濁茶 / 密かなる交信曲</option>
+        </select>
+      </div>
+    </div>
+    <div id="dummy"></div>
+    <script src="./index.js"></script>
+  </body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "name": "magicalmirai2021-procon",
+  "private": true,
+  "version": "1.0.0",
+  "description": "マジカルミライ2021 プログラミング・コンテスト応募作品",
+  "main": "index.js",
+  "scripts": {
+    "dev": "parcel src/index.html --out-dir dev",
+    "build": "parcel build src/index.html --public-url ./ --out-dir docs --no-source-maps",
+    "clean": "del-cli .cache dev docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/takanosuke/magicalmirai2021-procon.git"
+  },
+  "author": "Shinnosuke Takai <s.takanosuke9718@gmail> (https://github.com/takanosuke)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/takanosuke/magicalmirai2021-procon/issues"
+  },
+  "homepage": "https://github.com/takanosuke/magicalmirai2021-procon#readme",
+  "dependencies": {
+    "npm": "^7.21.0",
+    "p5": "^1.4.0",
+    "textalive-app-api": "^0.3.0"
+  },
+  "devDependencies": {
+    "del-cli": "^4.0.1",
+    "parcel-bundler": "^1.9.4",
+    "parcel-plugin-clean-dist": "0.0.6"
+  }
+}
