@@ -1,7 +1,8 @@
 import { Player, Ease } from "textalive-app-api";
 import Sans from './assets/NotoSansJP-Regular.otf';
+
 import P5 from "p5";
-import { random } from "core-js/core/number";
+
 
 // 初期化
 const SONG_DATA = {
@@ -69,7 +70,7 @@ const songSelect = document.querySelector("#song-select");
 const positionEl = document.querySelector("#position strong");
 const artistSpan = document.querySelector("#artist span");
 const songSpan = document.querySelector("#song span");
-const songSelectionBtn = document.querySelector(".song_selection_btn");
+const changeSongBtn = document.querySelector("#change-song");
 
 const player = new Player({
   app: {
@@ -145,16 +146,17 @@ function onAppReady(app) {
   }
 
   if (!app.songUrl) {
-    songSelect.addEventListener(
-      "change",
+    changeSongBtn.addEventListener(
+      "click",
       (event) => {
-        const song = SONG_DATA[event.currentTarget.value];
+        const song = SONG_DATA[songSelect.value];
         player.createFromSongUrl(song.songUrl, { video: song.video });
       }
     )
     const song = SONG_DATA["真島ゆろ / 嘘も本当も君だから"];
     player.createFromSongUrl(song.songUrl, { video: song.video });
   }
+  
 }
 
 /**
@@ -230,15 +232,30 @@ function onStop() {
 new P5((p5) => {
   // キャンバスの大きさなどを計算
   const width = window.innerWidth;
+  const xmax = Math.floor(width / 2);
+  const xmin = -1 * xmax;
   const height = window.innerHeight;
-  const charMargin = 0;
+  const ymax = Math.floor(height / 2);
+  const ymin = -1 * ymax;
+  const charMargin = 5;
   // let baseCharSize = 70;
   // let charSize = baseCharSize;
-  let currentPhraseIndex = 0;
-  let y = 0;
-  let addx = 0;
-  let bgColor = p5.color(255, 255, 255);
+  let currentPhraseIndex = -1;
+  let currentBeatPosi = -1;
+  let bgColor = p5.color(255, 255, 255, 100);
   let charColor = p5.color(0, 0, 0);
+  let ballNum = 0;
+  let balls = new Array(1000);
+  let randX = 0;
+  let randY = 0;
+  let lFlag = true;
+  let pointList = [
+    [xmin, ymin, p5.color(0, 0, 0, 0)],
+    [xmin, ymax, p5.color(0, 0, 0, 0)],
+    [xmax, ymin, p5.color(0, 0, 0, 0)],
+    [xmax, ymax, p5.color(0, 0, 0, 0)],
+  ]; //フレーズの数だけ用意
+  let concatPoint = 1;
 
   // キャンバスを作成
   p5.setup = () => {
@@ -247,7 +264,13 @@ new P5((p5) => {
     p5.background(40);
     p5.noStroke(); // 図形の輪郭線を消す
     p5.textFont(p5.loadFont(Sans));
+    p5.angleMode(p5.DEGREES);
     p5.textAlign(p5.LEFT, p5.CENTER);
+    for (let i = 0; i < balls.length; i++) {
+      balls[i] = [Math.floor((Math.random() * ((width / 2) - (-width / 2)) + (-width / 2))), Math.floor(Math.random() * ((height / 2) - (-height / 2)) + (-height / 2))];
+      // balls[i] = [Math.random() * 300, Math.random() * 300];
+    }
+    
   };
 
   p5.draw = () => {
@@ -264,169 +287,113 @@ new P5((p5) => {
     const max_amp = player.getMaxVocalAmplitude();
     const amp = player.getVocalAmplitude(position);
     const phrase = player.video.findPhrase(position);
+    let angle;
 
     p5.background(bgColor);
+
+
+
     let charSize = p5.map(amp, 0, max_amp, 50, 150);
     let baseCharSize = 70;
     if (chorus) {
-      charSize = charSize + 40;
-      baseCharSize = baseCharSize + 40;
+      charSize = charSize + 20;
+      baseCharSize = baseCharSize + 20;
     }
-    if (va) {
-      // p5.fill(255, 0, 0);
-      // p5.circle(500, 200, va.v * 500);
-      // p5.fill(0, 0, 2550);
-      // p5.circle(500, -200, va.a * 500);
-    }
-    if (amp) {
-      // p5.fill(255, 255, 70);
-      // p5.circle(-500, 0, amp/100);
-    }
-    if (beat) {
-      // const progress = beat.progress(position);
-      // // const rectHeight = Ease.quintIn(progress) * height;
-      // p5.fill(0, 0, 0, Ease.quintOut(progress) * 60);
-      // if (chorus) {
-      //   p5.fill(255, 0, 70);
-      // }
-      // p5.circle(0, 0, beat.position * 50);
-    }
+
     if (phrase) {
       const phraseWidth = p5.textWidth(phrase.text) + (phrase.charCount - 1) * charMargin;
       if (player.video.findIndex(phrase) != currentPhraseIndex) {
-        console.log("changePhrase");
         currentPhraseIndex = player.video.findIndex(phrase);
-        const ymax = 400;
-        const ymin = -400;
-        const xmax = 400;
-        const xmin = -400;
-        y = Math.random() * (ymax - ymin) + ymin;
-        addx = Math.random() * (xmax - xmin) + xmin;
-        const r = Math.random() * 255;
-        const g = Math.random() * 255;
-        const b = Math.random() * 255;
+        const randXmax = lFlag ? -200 : xmax - (baseCharSize + charMargin);
+        const randXmin = lFlag ? -1 * xmax : 0;
+        lFlag = ! lFlag;
+        const randYmax = ymax - (baseCharSize + charMargin);
+        const randYmin = -1 * randYmax;
+
+        randX = randInt(randXmax, randXmin);
+        randY = randInt(randYmax, randYmin);
+        const r = randInt(0, 255);
+        const g = randInt(0, 255);
+        const b = randInt(0, 255);
         const addMaxMin = Math.max(r, g, b) + Math.min(r, g, b);
-        bgColor = p5.color(r, g, b);
+        bgColor = p5.color(r, g, b, 100);
         charColor = p5.color(addMaxMin - r, addMaxMin - g, addMaxMin - b);
+        pointList.push([randX, randY, charColor]);
       }
       let char = phrase.firstChar;
-      let x = - phraseWidth / 2;
-      p5.fill(charColor);
+      let x = randX;
+      let y = randY;
+
+      if (x + phraseWidth > xmax) {
+        const ytmp = Math.ceil((x + phraseWidth) / (xmax - x)) * baseCharSize;
+        if (ytmp > ymax) {
+          y = y - (ytmp - ymax);
+          if (y < ymin) {
+            x = xmin;
+            y = ymin;
+          }
+        }
+      }
       if (phrase.endTime >= position) {
         while (char) {
           if (char.startTime <= position) {
             if (char.endTime >= position) {
               p5.textSize(charSize);
-              p5.text(char.text, x + addx, y);
             }
             else {
               p5.textSize(baseCharSize);
-              p5.text(char.text, x + addx, y);
             }
+            p5.fill(10, 128);
+            p5.text(char.text, x + 3, y + 3);
+            p5.fill(charColor);
+            p5.text(char.text, x, y);
+            p5.textSize(baseCharSize);
           }
-          p5.textSize(baseCharSize);
           x += p5.textWidth(char.text) + charMargin;
+          if (x + p5.textWidth(char.text) + charMargin > xmax) {
+            x = randX;
+            y += baseCharSize + charMargin;
+          }
           char = char.next;
         }
+      }
+    }
+    pointList.forEach(point => {
+      p5.push();
+      let pointSize = 10;
+      if (beat && !phrase) {
+        pointSize = Ease.quintIn(beat.progress(position)) * 100;
+      }
+      p5.fill(point[2]);
+      p5.circle(point[0], point[1], pointSize);
+      p5.pop();
+    });
+
+    if (chorus) {
+      if (beat) {
+        if (beat.position != currentBeatPosi) {
+          currentBeatPosi = beat.position;
+          concatPoint = (concatPoint + 1) % (pointList.length - 1)
+        }
+      }
+      if (pointList.length > 1) {
+        p5.push();
+        for (let i = 0; i < pointList.length; i++) {
+          for (let j = 0; j < pointList.length; j++) {
+            let alpha = Ease.quintIn(beat.progress(position)) * 150 + 50;
+            p5.strokeWeight(alpha / 255 * 5);
+            p5.stroke(p5.color(255, 255, 255, alpha));
+            if (i != j && (i == j + concatPoint || i == j + concatPoint + 1)) {
+              p5.line(pointList[i][0], pointList[i][1], pointList[j][0], pointList[j][1])
+            }
+          }
+        }
+        p5.pop();
       }
     }
   }
 });
 
-
-    // if (phrase) {
-    //   const phraseHeight = p5.textWidth(phrase.text) + (phrase.charCount + 1) * charMargin;
-    //   let char = phrase.firstChar;
-    //   let y = charMargin - phraseHeight / 2;
-    //   if (phrase.endTime >= position) {
-    //     while (char) {
-    //       if (char.startTime <= position) {
-    //         if (char.endTime >= position) {
-    //           p5.textSize(charSize);
-    //           p5.text(char.text, 300, y);
-    //         }
-    //         else {
-    //           p5.textSize(baseCharSize);
-    //           p5.text(char.text, 300, y);
-    //         }
-    //       }
-    //       p5.textSize(baseCharSize);
-    //       y += p5.textWidth(char.text);
-    //       char = char.next;
-    //     }
-    //   }
-    // }
-
-    // if (phrase) {
-    //   const phraseWidth = p5.textWidth(phrase.text);
-    //   let word = phrase.firstWord;
-    //   let x = - phraseWidth / 2
-    //   if (phrase.endTime >= position) {
-    //     while (word) {
-    //       if (word.startTime <= position) {
-    //         if (word.endTime >= position) {
-    //           p5.textSize(size);
-    //         }
-    //         p5.text(word.text, x, -200);
-    //       }
-    //       x += p5.textWidth(word.text);
-    //       word = word.next;
-    //     }
-    //   }
-
-    //   while (char) {
-    //     if (char.endTime + 100 < position) {
-    //       // これ以降の文字は表示する必要がない
-    //       break;
-    //     }
-    //     if (char.startTime < position + 100) {
-    //       const x = (((index % numChars) + 0.5) * (textAreaWidth / numChars)) - textAreaWidth/2;
-    //       let transparency = 1
-
-    //       p5.fill(0, 0, 255, transparency * 100);
-    //       if (position < char.startTime || char.endTime < position) {
-    //         p5.textSize(base_size);
-    //       }
-    //       else {
-    //         p5.textSize(size);
-    //       }
-    //       p5.text(char.text, x, 0);
-          
-    //       p5.textSize(50);
-    //       p5.text(cord.name, x, 150);
-    //     }
-    //     char = char.next;
-    //     index++;
-    //   }
-    // }
-
-
-    // // 歌詞
-    // // - 再生位置より 100 [ms] 前の時点での発声文字を取得
-    // // - { loose: true } にすることで発声中でなければ一つ後ろの文字を取得
-    // let char = player.video.findChar(position - 5000, { loose: true });
-    // if (char) {
-    //   // 位置決めのため、文字が歌詞全体で何番目かも取得しておく
-    //   let index = player.video.findIndex(char);
-    //   while (char) {
-    //     if (char.endTime + 5000 < position) {
-    //       // これ以降の文字は表示する必要がない
-    //       break;
-    //     }
-    //     // 文字の開始日時が指定時間の
-    //     if (char.startTime < position + 100) {
-    //       const x = ((index % numChars) + 0.5) * (textAreaWidth / numChars);
-    //       const y = (Math.floor(index / numChars) % 5) * margin;
-    //       let transparency = 1, size = 39;
-          
-    //       p5.fill(30, 255, 255, transparency * 100);
-    //       p5.textSize(size);
-    //       p5.text(char.text, margin + x, height / 2 + y);
-    //     }
-    //     char = char.next;
-    //     index++;
-    //   }
-    // }
-
-
-    
+const randInt = (max, min) => {
+  return Math.random() * (max - min) + min;
+}
