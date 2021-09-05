@@ -3,9 +3,28 @@ import Sans from './assets/NotoSansJP-Regular.otf';
 
 import P5 from "p5";
 
-
+const width = window.innerWidth;
+const xmax = Math.floor(width / 2);
+const xmin = -1 * xmax;
+const height = window.innerHeight;
+const ymax = Math.floor(height / 2);
+const ymin = -1 * ymax;
+let allPointList;
+let interludeList;
+let pointVector = [];
+let maxAmp;
 // 初期化
-const SONG_DATA = {
+const openSettingsBtn = document.querySelector("#open-settings");
+const playBtn = document.querySelector("#play");
+const jumpBtn = document.querySelector("#jump");
+const pauseBtn = document.querySelector("#pause");
+const rewindBtn = document.querySelector("#rewind");
+const songSelect = document.querySelector("#song-select");
+const positionEl = document.querySelector("#position strong");
+const artistSpan = document.querySelector("#artist span");
+const songSpan = document.querySelector("#song span");
+const changeSongBtn = document.querySelector("#change-song");
+const SONG = {
   "blues / First Note": {
       "songUrl": "https://piapro.jp/t/FDb1/20210213190029",
       "video": {
@@ -59,18 +78,8 @@ const SONG_DATA = {
         "lyricId": 52063,
         "lyricDiffId": 5149,
     }
-  },
+  }
 }
-const openSettingsBtn = document.querySelector("#open-settings");
-const playBtn = document.querySelectorAll(".play");
-const jumpBtn = document.querySelector("#jump");
-const pauseBtn = document.querySelector("#pause");
-const rewindBtn = document.querySelector("#rewind");
-const songSelect = document.querySelector("#song-select");
-const positionEl = document.querySelector("#position strong");
-const artistSpan = document.querySelector("#artist span");
-const songSpan = document.querySelector("#song span");
-const changeSongBtn = document.querySelector("#change-song");
 
 const player = new Player({
   app: {
@@ -105,30 +114,23 @@ function onAppReady(app) {
     document.querySelector("#control").style.display = "block";
 
     // 再生ボタン / Start music playback
-    playBtn.forEach((playBtn) =>
-      playBtn.addEventListener("click", () => {
-        console.log("click playBtn");
+    playBtn.addEventListener("click", () => {
+      if (player.isPlaying) {
+        player.video && player.requestPause();
+      }
+      else {
         player.video && player.requestPlay();
-      })
-    );
-
-    // 歌詞頭出しボタン / Seek to the first character in lyrics text
-    jumpBtn.addEventListener(
-      "click",
-      () => player.video && player.requestMediaSeek(player.video.firstChar.startTime)
-    );
-
-    // 一時停止ボタン / Pause music playback
-    pauseBtn.addEventListener("click", () => {
-      player.video && player.requestPause();
-      console.log("click playBtn");
+      }
     });
 
+    // 歌詞頭出しボタン / Seek to the first character in lyrics text
+    jumpBtn.addEventListener("click", () => player.video && player.requestMediaSeek(player.video.firstChar.startTime));
+
+    // 一時停止ボタン / Pause music playback
+    pauseBtn.addEventListener("click", () => {player.video && player.requestPause()});
+
     // 巻き戻しボタン / Rewind music playback
-    rewindBtn.addEventListener(
-      "click",
-      () => player.video && player.requestMediaSeek(0)
-    );
+    rewindBtn.addEventListener("click", () => player.video && player.requestMediaSeek(80000));
 
     // 詳細設定を開く/閉じるボタン
     openSettingsBtn.addEventListener(
@@ -148,13 +150,16 @@ function onAppReady(app) {
   if (!app.songUrl) {
     changeSongBtn.addEventListener(
       "click",
-      (event) => {
-        const song = SONG_DATA[songSelect.value];
-        player.createFromSongUrl(song.songUrl, { video: song.video });
+      () => {
+        if (player.isPlaying) {
+          player.video && player.requestPause();
+        }
+        const song = SONG[songSelect.value]
+        player.createFromSongUrl(song.songUrl, { video: song.video});
       }
     )
-    const song = SONG_DATA["真島ゆろ / 嘘も本当も君だから"];
-    player.createFromSongUrl(song.songUrl, { video: song.video });
+    const defaultSong = SONG["濁茶 / 密かなる交信曲"];
+    player.createFromSongUrl(defaultSong.songUrl, { video: defaultSong.video });
   }
   
 }
@@ -172,6 +177,16 @@ function onVideoReady(v) {
   // メタデータを表示する
   artistSpan.textContent = player.data.song.artist.name;
   songSpan.textContent = player.data.song.name;
+
+  // 演出に必要なデータを取得
+  const phraseNum = player.video.phraseCount;
+  const phrases = player.video.phrases;
+  const videoEndTime = player.video.endTime;
+  allPointList = createPointList(phraseNum);
+  pointVector = Array(phraseNum).fill().map(() => ({ "x": 0, "y": 0 }));
+  interludeList = createInterludeList(phrases, videoEndTime);
+  console.log(interludeList);
+  maxAmp = player.getMaxVocalAmplitude();
 }
 
 /**
@@ -181,7 +196,6 @@ function onVideoReady(v) {
  */
 function onTimerReady(t) {
   // ボタンを有効化する
-  console.log("onTimerReady!");
   if (!player.app.managed) {
     document
       .querySelectorAll("button")
@@ -226,51 +240,28 @@ function onStop() {
   console.log("player.onStop");
 }
 
-
-
 // p5.js を初期化
 new P5((p5) => {
   // キャンバスの大きさなどを計算
-  const width = window.innerWidth;
-  const xmax = Math.floor(width / 2);
-  const xmin = -1 * xmax;
-  const height = window.innerHeight;
-  const ymax = Math.floor(height / 2);
-  const ymin = -1 * ymax;
   const charMargin = 5;
-  // let baseCharSize = 70;
-  // let charSize = baseCharSize;
-  let currentPhraseIndex = -1;
   let currentBeatPosi = -1;
-  let bgColor = p5.color(255, 255, 255, 100);
-  let charColor = p5.color(0, 0, 0);
-  let ballNum = 0;
-  let balls = new Array(1000);
-  let randX = 0;
-  let randY = 0;
-  let lFlag = true;
-  let pointList = [
-    [xmin, ymin, p5.color(0, 0, 0, 0)],
-    [xmin, ymax, p5.color(0, 0, 0, 0)],
-    [xmax, ymin, p5.color(0, 0, 0, 0)],
-    [xmax, ymax, p5.color(0, 0, 0, 0)],
-  ]; //フレーズの数だけ用意
+  let bgColor = [255, 255, 255, 100];
   let concatPoint = 1;
+  let font;
+  
 
+  p5.preload = () => {
+    font = p5.loadFont(Sans)
+  }
   // キャンバスを作成
   p5.setup = () => {
     p5.createCanvas(width, height, p5.WEBGL);
     p5.frameRate(60);
-    p5.background(40);
+    p5.background(bgColor);
     p5.noStroke(); // 図形の輪郭線を消す
-    p5.textFont(p5.loadFont(Sans));
+    p5.textFont(font);
     p5.angleMode(p5.DEGREES);
-    p5.textAlign(p5.LEFT, p5.CENTER);
-    for (let i = 0; i < balls.length; i++) {
-      balls[i] = [Math.floor((Math.random() * ((width / 2) - (-width / 2)) + (-width / 2))), Math.floor(Math.random() * ((height / 2) - (-height / 2)) + (-height / 2))];
-      // balls[i] = [Math.random() * 300, Math.random() * 300];
-    }
-    
+    p5.textAlign(p5.CENTER, p5.CENTER);
   };
 
   p5.draw = () => {
@@ -278,122 +269,169 @@ new P5((p5) => {
     if (!player || !player.video) {
       return;
     }
-
+    // 現在の再生位置の情報を取得する
     const position = player.timer.position;
     const beat = player.findBeat(position);
     const chorus = player.findChorus(position);
     const cord = player.findChord(position);
     const va = player.getValenceArousal(position);
-    const max_amp = player.getMaxVocalAmplitude();
     const amp = player.getVocalAmplitude(position);
     const phrase = player.video.findPhrase(position);
-    let angle;
+    const isInterlude = duringInterlude(position);    
 
-    p5.background(bgColor);
-
-
-
-    let charSize = p5.map(amp, 0, max_amp, 50, 150);
+    let phraseIndex = player.video.findIndex(player.video.findPhrase(position, { loose: true }));
+    if (phraseIndex < 0) {
+      phraseIndex = allPointList.length - 1;
+    }
+    // 文字サイズの定義
+    let charSize = p5.map(amp, 0, maxAmp, 50, 150);
     let baseCharSize = 70;
+    let pointSize = 0;
+    
+    let pointList = allPointList.slice(0, phraseIndex);
+    const point = allPointList[phraseIndex];
+    let x = point.x
+    let y = point.y;
+
+    // サビなら文字サイズ拡大
     if (chorus) {
       charSize = charSize + 20;
       baseCharSize = baseCharSize + 20;
     }
-
-    if (phrase) {
-      const phraseWidth = p5.textWidth(phrase.text) + (phrase.charCount - 1) * charMargin;
-      if (player.video.findIndex(phrase) != currentPhraseIndex) {
-        currentPhraseIndex = player.video.findIndex(phrase);
-        const randXmax = lFlag ? -200 : xmax - (baseCharSize + charMargin);
-        const randXmin = lFlag ? -1 * xmax : 0;
-        lFlag = ! lFlag;
-        const randYmax = ymax - (baseCharSize + charMargin);
-        const randYmin = -1 * randYmax;
-
-        randX = randInt(randXmax, randXmin);
-        randY = randInt(randYmax, randYmin);
-        const r = randInt(0, 255);
-        const g = randInt(0, 255);
-        const b = randInt(0, 255);
-        const addMaxMin = Math.max(r, g, b) + Math.min(r, g, b);
-        bgColor = p5.color(r, g, b, 100);
-        charColor = p5.color(addMaxMin - r, addMaxMin - g, addMaxMin - b);
-        pointList.push([randX, randY, charColor]);
+    // beatが変わった瞬間に実行
+    if (beat && beat.position != currentBeatPosi) {
+      currentBeatPosi = beat.position;
+      concatPoint = (concatPoint % (pointList.length - 1)) + 1;
+      for (let i = 0; i < pointList.length; i++) {
+        // pointVector[i].x = randInt(-1, 1);
+        pointVector[i].x = -1 - (pointList[i].type / 2);
+        pointVector[i].y = randInt(-1, 1);
       }
-      let char = phrase.firstChar;
-      let x = randX;
-      let y = randY;
+    }
 
-      if (x + phraseWidth > xmax) {
-        const ytmp = Math.ceil((x + phraseWidth) / (xmax - x)) * baseCharSize;
-        if (ytmp > ymax) {
-          y = y - (ytmp - ymax);
-          if (y < ymin) {
-            x = xmin;
-            y = ymin;
-          }
+    // 背景の描画
+    p5.background(bgColor);
+
+    // ポイントの描画
+    pointList.forEach(point => {
+      p5.push();
+      p5.fill(point.color);
+      p5.translate(point.x, point.y);
+      pointSize = point.size;
+      // サビのときは音譜のサイズを拡大と回転
+      if (beat && chorus) {
+        pointSize = point.size + Ease.quintIn(beat.progress(position)) * point.size;
+        const angle = p5.map(Ease.quintIn(beat.progress(position)), 0, 1, -5, 5);
+        p5.rotate(angle)
+      }
+      p5.textSize(pointSize);
+      p5.text(point.note, 0, 5);
+      p5.pop();
+    });
+
+    // フレーズがなければ音譜を流す
+    if (isInterlude && beat) {
+      p5.push()
+      p5.stroke(0);
+      p5.strokeWeight(2);
+      p5.line(xmin, -200, xmax, -200);
+      p5.line(xmin, -100, xmax, -100);
+      p5.line(xmin, 0, xmax, 0);
+      p5.line(xmin, 100, xmax, 100);
+      p5.line(xmin, 200, xmax, 200);
+      p5.pop()
+      for (let i = 0; i < pointList.length; i++) {
+        pointList[i].x = pointList[i].x + (Ease.quintIn(beat.progress(position))+1) * 5 * pointVector[i].x;
+        if (pointList[i].x < xmin) {
+          pointList[i].x = xmax;
+        }
+        // if (pointList[i].x > xmax || pointList[i].x < xmin) {
+        //   pointVector[i].x = -1 * pointVector[i].x;
+        // }
+        pointList[i].y = pointList[i].y + Ease.quintIn(beat.progress(position)) * 10 * pointVector[i].y
+        if (pointList[i].y > ymax || pointList[i].y < ymin) {
+          pointVector[i].y = -1 * pointVector[i].y;
         }
       }
+    }
+    // 歌詞を描画する
+    if (phrase) {
+      let char = phrase.firstChar;
+      // フレーズが終わってなければ
       if (phrase.endTime >= position) {
         while (char) {
+          // 文字の発声が始まっていれば
           if (char.startTime <= position) {
+            // 文字の発声が終わっていなければ
             if (char.endTime >= position) {
               p5.textSize(charSize);
             }
             else {
               p5.textSize(baseCharSize);
             }
+            
             p5.fill(10, 128);
             p5.text(char.text, x + 3, y + 3);
-            p5.fill(charColor);
+            p5.fill(point.color);
             p5.text(char.text, x, y);
-            p5.textSize(baseCharSize);
           }
-          x += p5.textWidth(char.text) + charMargin;
+          x += baseCharSize + charMargin;
+          // 文字がはみ出たときは
           if (x + p5.textWidth(char.text) + charMargin > xmax) {
-            x = randX;
+            x = point.x;
             y += baseCharSize + charMargin;
           }
           char = char.next;
         }
       }
     }
-    pointList.forEach(point => {
-      p5.push();
-      let pointSize = 10;
-      if (beat && !phrase) {
-        pointSize = Ease.quintIn(beat.progress(position)) * 100;
-      }
-      p5.fill(point[2]);
-      p5.circle(point[0], point[1], pointSize);
-      p5.pop();
-    });
-
-    if (chorus) {
-      if (beat) {
-        if (beat.position != currentBeatPosi) {
-          currentBeatPosi = beat.position;
-          concatPoint = (concatPoint + 1) % (pointList.length - 1)
-        }
-      }
-      if (pointList.length > 1) {
-        p5.push();
-        for (let i = 0; i < pointList.length; i++) {
-          for (let j = 0; j < pointList.length; j++) {
-            let alpha = Ease.quintIn(beat.progress(position)) * 150 + 50;
-            p5.strokeWeight(alpha / 255 * 5);
-            p5.stroke(p5.color(255, 255, 255, alpha));
-            if (i != j && (i == j + concatPoint || i == j + concatPoint + 1)) {
-              p5.line(pointList[i][0], pointList[i][1], pointList[j][0], pointList[j][1])
-            }
-          }
-        }
-        p5.pop();
-      }
-    }
   }
 });
 
-const randInt = (max, min) => {
-  return Math.random() * (max - min) + min;
+const randInt = (min, max) => {
+  return Math.floor(Math.random() * (max + 1 - min) + min);
+}
+
+
+const createPointList = (num) => {
+  let result = [];
+  const noteList = ["♩", "♪", "♫", "♬"];
+  for (let i = 0; i < num; i++){
+    const x = (i % 2 == 0) ? randInt(xmin, 0) : randInt(0, xmax);
+    const y = (i % 2 == 0) ? randInt(ymin, 0) : randInt(0, ymax);
+    const color = [randInt(0, 255), randInt(0, 255), randInt(0, 255), randInt(100,255)];
+    const size = randInt(30, 120);
+    const type = randInt(0, noteList.length - 1);
+    const note = noteList[type];
+    result.push({ "type": type, "note":note, 'x': x, 'y': y, 'color': color, 'size': size});
+  }
+  return result
+}
+
+const createInterludeList = (phrases, videoEndTime, interludeTime = 1000) => {
+  let result = [];
+  // 前奏があればリストへ追加
+  if (phrases[0].startTime > interludeTime) {
+    result.push({ "startTime": 0, "endTime": phrases[0].startTime - 1 });
+  }
+  // 間奏があればリストへ追加
+  for (let i = 0; i < phrases.length - 1; i++){
+    if (phrases[i + 1].startTime - phrases[i].endTime > interludeTime) {
+      result.push({ "startTime": phrases[i].endTime + 1, "endTime": phrases[i+1].startTime - 1 });
+    }
+  }
+  // 後奏があればリストへ追加
+  if (videoEndTime - phrases.slice(-1)[0].endTime > interludeTime) {
+    result.push({ "startTime": phrases.slice(-1)[0].endTime + 1, "endTime": videoEndTime });
+  }
+  return result;
+}
+
+const duringInterlude = (position) => {
+  for (let i = 0; i < interludeList.length; i++) {
+    if (position >= interludeList[i].startTime && position <= interludeList[i].endTime) {
+      return true;
+    }
+  }
+  return false;
 }
