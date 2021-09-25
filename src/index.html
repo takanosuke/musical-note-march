@@ -1,48 +1,51 @@
 <html>
   <head>
     <title>Takanosuke App</title>
-    <link rel="stylesheet" href="index.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <link rel="stylesheet" href="index.css" />
   </head>
   <body>
-    <div id="overlay"></div>
-    <div id="container">
-      <div>
-        <p id="lyrics">
-          <span id="text"></span>
-        </p>
+    <div class="container-fuild">
+      <div class="position-absolute h-100 w-100 m-0 d-flex align-items-center justify-content-center">
+        <button id="center-play" class="play btn inactive" disabled><img src="assets/play_icon.png" width="150" alt="再生"></button>
       </div>
-    </div>
-    <div id="media"></div>
-    <div id="header">
-      <div id="control" style="display: none">
-        <button id="play" disabled>再生</button>
-        <button id="jump" disabled>歌詞頭出し</button>
-        <button id="open-settings" disabled>設定開く</button>
+      <div id="media"></div>
+      <div id="control" class="fixed-bottom m-0 mb-2 text-center" style="display: none">
+        <button id="open-settings" class="btn w-100" disabled><img src="assets/up_icon.png" width="2%" alt="設定開く"></button>
       </div>
-      <div id="settings" style="display: none">
-        <div id="meta">
-          <div id="artist"><strong>artist:</strong> <span>-</span></div>
-          <div id="song"><strong>song:</strong> <span>-</span></div>
+      <div id="settings" class= "fixed-bottom m-0 text-center" style="display: none">
+        <button id="close-settings" class="btn w-100" disabled><img src="assets/down_icon.png" width="2%" alt="設定閉じる"></button>
+        <div class="mb-5 mx-5">
+          <input id="seek-bar" type="range" value="0" class="form-range">
+          <label id="seek-bar-label" for="seek-bar" class="form-label mb-0 mt-2">動画再生位置:[...]　：　再生パート:[...]</label>
         </div>
-        <p id="message">ビデオの準備が完了！！</p>
-        <p>
-          <span id="position"><strong>-</strong> [ms]</span>
-        </p>
-        <button id="pause" disabled>一時停止</button>
-        <button id="rewind" disabled>巻き戻し</button>
-        <button id="change-song" disabled>曲変更</button>
-        <select id="song-select">
-          <option value="blues / First Note">blues / First Note</option>
-          <option value="chiquewa / Freedom!">chiquewa / Freedom!</option>
-          <option value="ラテルネ / その心に灯る色は">ラテルネ / その心に灯る色は</option>
-          <option value="真島ゆろ / 嘘も本当も君だから">真島ゆろ / 嘘も本当も君だから</option>
-          <option value="シロクマ消しゴム / 夏をなぞって">シロクマ消しゴム / 夏をなぞって</option>
-          <option value="濁茶 / 密かなる交信曲">濁茶 / 密かなる交信曲</option>
-        </select>
+        <div class="row">
+          <div class="col text-center">
+            <h3><span id="artist">-</span><strong> / </strong><span id="song">-</span></h3>
+          </div>
+          <div class="col">
+            <button class="play btn btn-secondary" disabled>　再生　</button>
+            <button id="pause" class="btn btn-secondary" disabled>一時停止</button>
+          </div>
+          <div class="col">
+            <div class="input-group input-group mb-3">
+              <select id="song-select" class="form-select">
+                <option value="濁茶 / 密かなる交信曲" selected>濁茶 / 密かなる交信曲</option>
+                <option value="blues / First Note">blues / First Note</option>
+                <option value="chiquewa / Freedom!">chiquewa / Freedom!</option>
+                <option value="ラテルネ / その心に灯る色は">ラテルネ / その心に灯る色は</option>
+                <option value="真島ゆろ / 嘘も本当も君だから">真島ゆろ / 嘘も本当も君だから</option>
+                <option value="シロクマ消しゴム / 夏をなぞって">シロクマ消しゴム / 夏をなぞって</option>
+              </select>
+              <button id="change-song" class="btn btn-secondary" disabled>曲変更</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <script src="SONG.js"></script>
     <script src="index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
   </body>
 </html>

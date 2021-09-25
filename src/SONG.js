@@ -54,3 +54,4 @@ const SONG = {
     }
   },
 }
+module.exports = SONG;
