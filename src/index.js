@@ -12,8 +12,8 @@ const xmin = -1 * xmax;
 const ymin = -1 * ymax;
 let isChangingSong = false;
 let isClickSeekBar = false;
-let allPointList;
-let extPointList;
+let phrasePoints;
+let extPoints;
 let interludes;
 let choruses;
 let videoEndTime;
@@ -49,6 +49,7 @@ player.addListener({
   onVideoReady,
   onTimerReady,
   onThrottledTimeUpdate,
+  onAppMediaChange,
   onPlay,
   onPause,
   onStop,
@@ -123,7 +124,6 @@ function onVideoReady(v) {
   artistSpan.textContent = player.data.song.artist.name;
   songSpan.textContent = player.data.song.name;
   setVideoData();
-  console.log(interludes);
   seekBar.setAttribute("max", videoEndTime);
   seekBar.setAttribute("value", 0);
   seekBar.addEventListener("change", (e) => {
@@ -166,6 +166,16 @@ function onThrottledTimeUpdate(position) {
     seekBar.value = Math.floor(position);
     updateSeekbarLabel(seekBar.value);
   }
+}
+/**
+ * TextAlive アプリの再生すべき楽曲URLが変更されたときに呼ばれる
+ * 
+ * @param songUrl — 楽曲URL / Song URL
+ * @param videoPromise — 動画オブジェクトと Timer の準備が整ったときに解決される Promise オブジェクト / A promise to resolve after the video object and Timer gets ready
+ */
+function onAppMediaChange(songUrl, videoPromise) {
+  console.log("player.onAppMediaChange");
+
 }
 
 function onPlay() {
@@ -252,7 +262,7 @@ new P5((p5) => {
     const isOpening = interlude && interlude.name == "前奏" && (position > firstPhraseStart - 15000) && (position < firstPhraseStart);
     const isEnding = interlude && interlude.name == "後奏" && (position > videoEndTime - 15000);
     let phraseIndex = player.video.findIndex(player.video.findPhrase(position, { loose: true }));
-    if (phraseIndex < 0) phraseIndex = allPointList.length - 1;
+    if (phraseIndex < 0) phraseIndex = phrasePoints.length - 1;
 
     // 歌詞サイズの設定（サビならサイズ拡大）
     let charSize = p5.map(amp, 0, maxAmp, 50, 150);
@@ -260,14 +270,14 @@ new P5((p5) => {
     if (chorus)　charSize = charSize + 20;
     // 音譜の設定
     let pointSize;
-    let pointList = (allPointList.slice(0, phraseIndex)).concat(extPointList);
-    const point = allPointList[phraseIndex];
+    let points = (phrasePoints.slice(0, phraseIndex)).concat(extPoints);
+    const currentPoint = phrasePoints[phraseIndex];
     // ビート変更時の処理
     if (beat && beat.position != currentBeatPosi) {
       currentBeatPosi = beat.position;
-      for (let i = 0; i < pointList.length; i++) {
-        pointList[i].vx = 1 + (pointList[i].type / 3);
-        pointList[i].vy = randInt(-1, 1);
+      for (let i = 0; i < points.length; i++) {
+        points[i].vx = 1 + (points[i].type / 3);
+        points[i].vy = randInt(-1, 1);
       }
     }
 
@@ -300,7 +310,7 @@ new P5((p5) => {
       //   const angle = p5.map(Ease.elasticOut(beat.progress(position)), 0, 1, -5 - point.type * 2, 5 + point.type * 2);
       //   p5.rotate(angle);
       // }
-      p5.fill(allPointList[0].color);
+      p5.fill(phrasePoints[0].color);
       p5.textSize(Ease.quintOut(1 - openingProgress) * 200);
       p5.text(player.data.song.name, 0, 0);
       p5.pop();
@@ -364,7 +374,7 @@ new P5((p5) => {
       }
       p5.pop()
       // 行進演出のために音譜の座標をアップデート
-      if (!isEnding && player.isPlaying && beat) pointList = updatePointList(position, pointList, beat);
+      if (!isEnding && player.isPlaying && beat) points = updatePoints(position, points, beat);
     }
 
     // ----------------------------------------------------
@@ -373,7 +383,7 @@ new P5((p5) => {
     // 通常時の音譜描画(エンディングではない時)
     if (!isEnding) {
       // 音譜の描画
-      pointList.forEach((point, i) => {
+      points.forEach((point, i) => {
         p5.push();
         p5.fill(point.color);
         p5.translate(point.x, point.y);
@@ -406,7 +416,7 @@ new P5((p5) => {
       //   2. 音譜の円陣を徐々に中央に収束
       //   3. 音譜の円陣を発散&曲のタイトルが飛び出す
       if (ending3Progress < 1) {
-        pointList.forEach((point, i) => {
+        points.forEach((point, i) => {
           let r;
           if (ending1Progress < 1) {
             r = 300;
@@ -420,8 +430,8 @@ new P5((p5) => {
             r = 50 + Ease.quintOut(ending3Progress) * 1500;
             pointSize = point.size + Ease.quintOut(ending3Progress) * 250;
           }
-          const x = p5.cos((position / 30 + (i * 360 / pointList.length))) * r;
-          const y = p5.sin((position / 30 + (i * 360 / pointList.length))) * r;
+          const x = p5.cos((position / 30 + (i * 360 / points.length))) * r;
+          const y = p5.sin((position / 30 + (i * 360 / points.length))) * r;
           p5.push();
           p5.fill(point.color);
           // ending1Progressが進む(1に近づく)毎に徐々に円陣へと変わっていく
@@ -447,25 +457,25 @@ new P5((p5) => {
     if (phrase && phrase.endTime >= position) {
       // 歌詞を表示する位置の定義。サビの時は固定。サビ以外の時は事前に準備したランダムな座標。
       if (chorus) {
-        point.x = -font.textBounds(phrase.text, 0, 0, baseCharSize).w / 2;
-        point.y = 300;
-        point.color[3] = 255;
+        currentPoint.x = -font.textBounds(phrase.text, 0, 0, baseCharSize).w / 2;
+        currentPoint.y = 300;
+        currentPoint.color[3] = 255;
       }
-      let x = point.x;
-      let y = point.y;
+      let x = currentPoint.x;
+      let y = currentPoint.y;
       p5.push();
       p5.translate(x, y);
 
       // 最初の1文字目は歌詞ではなく音譜を表示する。音譜はビートに合わせて震わせる
       if (beat) {
         pointSize = 70 + Ease.quintIn(beat.progress(position)) * 70;
-        const angle = p5.map(Ease.elasticOut(beat.progress(position)), 0, 1, -5 - point.type * 2, 5 + point.type * 2);
+        const angle = p5.map(Ease.elasticOut(beat.progress(position)), 0, 1, -5 - currentPoint.type * 2, 5 + currentPoint.type * 2);
         p5.rotate(angle);
       }
-      p5.fill(point.color);
+      p5.fill(currentPoint.color);
       p5.textFont(font);
       p5.textSize(pointSize);
-      p5.text(point.note, 0, 0);
+      p5.text(currentPoint.note, 0, 0);
       p5.pop();
       x += baseCharSize + charMargin;
 
@@ -481,14 +491,14 @@ new P5((p5) => {
           p5.fill(10, 128);
           p5.text(char.text, x + 3, y + 3);
           // 歌詞の描画
-          p5.fill(point.color);
+          p5.fill(currentPoint.color);
           p5.text(char.text, x, y);
         }
         // 表示位置の更新
         x += baseCharSize + charMargin;
         // 文字がはみ出たときは1段下げて表示
         if (x + p5.textWidth(char.text) + charMargin > xmax) {
-          x = point.x;
+          x = currentPoint.x;
           y += baseCharSize + charMargin;
         }
         char = char.next;
@@ -507,8 +517,8 @@ new P5((p5) => {
         const note = noteList[type];
         const x = p5.mouseX - width / 2 ;
         const y = p5.mouseY - height / 2;
-        extPointList.push({ "type": type, "note": note, 'x': x, 'y': y, 'color': color, 'size': size, "vx": 0, "vy": 0 });
-        if (extPointList.length > 15) extPointList.shift();
+        extPoints.push({ "type": type, "note": note, 'x': x, 'y': y, 'color': color, 'size': size, "vx": 0, "vy": 0 });
+        if (extPoints.length > 15) extPoints.shift();
       }
     }
   }
@@ -527,17 +537,17 @@ const randInt = (min, max) => {return Math.floor(Math.random() * (max + 1 - min)
  *
 */
 const setVideoData = () => {
-  // 演出に必要なデータを取得
+  // 演出に必要なデータを取得・定義
   const video = player.video
   videoEndTime = video.duration;
-  allPointList = createPointList(video.phraseCount);
-  extPointList = [];
+  phrasePoints = getPhrasePoints(video.phraseCount);
+  extPoints = [];
   interludes = getInterludes(video.phrases, videoEndTime);
   choruses = player.getChoruses();
   maxAmp = player.getMaxVocalAmplitude();
 }
 
-const createPointList = (num) => {
+const getPhrasePoints = (num) => {
   let result = [];
   const noteList = ["♩", "♪", "♫", "♬", "♭", "♯", "♮"];
   for (let i = 0; i < num; i++){
@@ -571,18 +581,18 @@ const createPointList = (num) => {
   return result
 }
 
-const updatePointList = (position, pointList, beat) => {
-  for (let i = 0; i < pointList.length; i++) {
-    pointList[i].x = pointList[i].x + (Ease.quintIn(beat.progress(position))) * 5 * pointList[i].vx;
-    if (pointList[i].x > xmax) {
-      pointList[i].x = xmin;
+const updatePoints = (position, points, beat) => {
+  for (let i = 0; i < points.length; i++) {
+    points[i].x = points[i].x + (Ease.quintIn(beat.progress(position))) * 5 * points[i].vx;
+    if (points[i].x > xmax) {
+      points[i].x = xmin;
     }
-    pointList[i].y = pointList[i].y + Ease.quintIn(beat.progress(position)) * 20 * pointList[i].vy
-    if (pointList[i].y > ymax || pointList[i].y < ymin) {
-      pointList[i].vy = -1 * pointList[i].vy;
+    points[i].y = points[i].y + Ease.quintIn(beat.progress(position)) * 20 * points[i].vy
+    if (points[i].y > ymax || points[i].y < ymin) {
+      points[i].vy = -1 * points[i].vy;
     }
   }
-  return pointList;
+  return points;
 }
 
 const getInterludes = (phrases, videoEndTime, interludeTime = 3000) => {
