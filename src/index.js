@@ -38,6 +38,7 @@ const defaultSong = SONG["濁茶 / 密かなる交信曲"];
 
 const player = new Player({
   app: {
+    token: "xS2qwXBPVRUpwLWO",
     appAuthor: "takanosuke",
     appName: "magicalmirai2021-procon",
   },
