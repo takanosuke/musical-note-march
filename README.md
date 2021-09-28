@@ -1,22 +1,24 @@
 # 音譜の行進隊
 初音ミク「マジカルミライ 2021」 プログラミング・コンテスト応募作品
+![概要](https://user-images.githubusercontent.com/38162502/135104803-7e1e9d42-7b06-4401-8c62-17a81e3f1aae.png)
 
 ## 概要
-* TextAliveAppAPIを利用して楽曲に合わせた演出を行うWebアプリケーションです。TextAliveAppAPIに対応した楽曲全てに対応しています。
+* TextAliveAppAPIを利用して楽曲に合わせた演出を行うWebアプリケーションです。
+* TextAliveAppAPIに対応した楽曲全てに対応しています。
 * フレーズと共に出現する音譜が、サビや間奏で音楽に合わせて行進、ダンスする演出を楽しめます。
 * 音譜の手動生成機能によって、演出をただ眺めるだけではなく自分の手で演出を創り出すことができます。
 * 偶然が生み出すランダムな演出によって、何度再生しても毎回異なる演出を楽しむことができます。
-![概要](https://user-images.githubusercontent.com/38162502/135104803-7e1e9d42-7b06-4401-8c62-17a81e3f1aae.png)
 
 ## 使用方法
 ### 利用準備
 * (前提) Node.jsがインストールされていること
 * 以下のコマンドでプロジェクトのクローンと必要なモジュールをインストールします。
 <pre>
-git clone https://github.com/takanosuke/magicalmirai2021-procon.git
-cd magicalmirai2021-procon
+git clone https://github.com/takanosuke/musical-note-march.git
+cd musical-note-march/
 npm install
 </pre>
+※ 動作確認をした環境はnpm@7.20.0です。
 
 ### 開発サーバ起動
 * 以下のコマンドで開発用サーバが起動します。ローカル環境でテストする際に利用します。
