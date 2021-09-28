@@ -1,6 +1,8 @@
 import { Player, Ease } from "textalive-app-api";
+import Lottie from "lottie-web";
 import Sans from './assets/NotoSansJP-Regular.otf';
 import CorporateLogo from './assets/Corporate-Logo-Rounded.ttf';
+import Pop from './assets/pop.json'
 import P5 from "p5";
 
 const SONG = require('./SONG');
@@ -17,6 +19,7 @@ let extPoints;
 let interludes;
 let choruses;
 let videoEndTime;
+let titleCharSize;
 let maxAmp;
 const openSettingsBtn = document.querySelector("#open-settings");
 const closeSettingsBtn = document.querySelector("#close-settings");
@@ -30,7 +33,9 @@ const seekBarLabel = document.querySelector("#seek-bar-label");
 const artistSpan = document.querySelector("#artist");
 const songSpan = document.querySelector("#song");
 const changeSongBtn = document.querySelector("#change-song");
+
 const defaultSong = SONG["濁茶 / 密かなる交信曲"];
+
 const player = new Player({
   app: {
     appAuthor: "takanosuke",
@@ -207,10 +212,15 @@ function onStop() {
 new P5((p5) => {
   // キャンバスの大きさなどを計算
   const charMargin = 5;
+  const lottiePopContainer = document.querySelector("#lottie-pop");
   let currentBeatPosi = -1;
+  let prevPhraseIndex = -1;
   let bgColor = [255, 255, 255, 255];
   let font;
   let logoFont;
+  let lottiePopAnimation;
+  let isOpening = false;
+  let isEnding = false;
 
   p5.preload = () => {
     font = p5.loadFont(Sans);
@@ -225,6 +235,22 @@ new P5((p5) => {
     p5.textFont(logoFont);
     p5.angleMode(p5.DEGREES);
     p5.textAlign(p5.CENTER, p5.CENTER);
+    lottiePopAnimation = Lottie.loadAnimation({
+      container: lottiePopContainer,
+      loop: false,
+      autoplay: false,
+      animationData: Pop,
+      renderer: "svg",
+      rendererSettings: {
+        id: 'pop'
+      },
+    })
+    lottiePopAnimation.goToAndStop(0);
+    lottiePopAnimation.setSpeed(1);
+    lottiePopAnimation.goToAndStop(0);
+    lottiePopAnimation.onComplete = () => {
+      lottiePopAnimation.goToAndStop(0);
+    }
   };
 
   p5.draw = () => {
@@ -258,16 +284,16 @@ new P5((p5) => {
     const cord = player.findChord(position);
     const amp = player.getVocalAmplitude(position);
     const phrase = player.video.findPhrase(position);
-    const firstPhraseStart = player.video.firstPhrase.startTime
-    const isOpening = interlude && interlude.name == "前奏" && (position > firstPhraseStart - 15000) && (position < firstPhraseStart);
-    const isEnding = interlude && interlude.name == "後奏" && (position > videoEndTime - 15000);
+    const firstPhraseStart = player.video.firstPhrase.startTime;
+    isOpening = interlude && interlude.name == "前奏" && (position < firstPhraseStart);
+    isEnding = interlude && interlude.name == "後奏" && (position > videoEndTime - 15000);
     let phraseIndex = player.video.findIndex(player.video.findPhrase(position, { loose: true }));
-    if (phraseIndex < 0) phraseIndex = phrasePoints.length - 1;
+    if (phraseIndex < 0) phraseIndex = phrasePoints.length;
 
     // 歌詞サイズの設定（サビならサイズ拡大）
-    let charSize = p5.map(amp, 0, maxAmp, 50, 150);
-    let baseCharSize = 70;
-    if (chorus)　charSize = charSize + 20;
+    let charSize = p5.map(amp, 0, maxAmp, width * 1/40, width * 3/40);
+    let baseCharSize = width * 7/200;
+    if (chorus)　charSize = charSize + width * 1/100;
     // 音譜の設定
     let pointSize;
     let points = (phrasePoints.slice(0, phraseIndex)).concat(extPoints);
@@ -284,34 +310,26 @@ new P5((p5) => {
     // ----------------------------------------------------
     // 背景描画パート
     // ----------------------------------------------------
-    if (!isEnding) {
-      let mv = player.getMedianValenceArousal().v;
-      let kv = 700;
-      let v = Math.max(0, Math.min(100, mv * kv));
-      let vv = Math.max(60, Math.min(90, mv * kv));
-      p5.push();
-      p5.colorMode(p5.HSL);
-      p5.background([30, v, vv, 1]);
-      p5.pop();
+    bgColor = [255, 255, 255, 255];
+    if (!(isEnding || isOpening || chorus) && currentPoint){
+      const maxColor = Math.max(currentPoint.color[0], currentPoint.color[1], currentPoint.color[2])
+      const minColor = Math.min(currentPoint.color[0], currentPoint.color[1], currentPoint.color[2]);
+      const addMaxMin = maxColor + minColor;
+      bgColor = [addMaxMin - currentPoint.color[0], addMaxMin - currentPoint.color[1], addMaxMin - currentPoint.color[2], 30];
     }
-    // サビの背景は白色
-    if (chorus || isEnding) p5.background(255,255,255,1);
+    p5.background(bgColor);
 
     // ----------------------------------------------------
     // 前奏演出パート
     // ----------------------------------------------------
-    if (isOpening) {
+    if (isOpening && (position > firstPhraseStart - 15000)) {
       p5.push();
       const openingProgress = Math.min(1, p5.map(position, firstPhraseStart - 15000, firstPhraseStart, 0, 1));
       p5.textAlign(p5.CENTER, p5.CENTER);
       p5.textFont(logoFont);
-      // p5.translate(x, y);
-      // if (beat) {
-      //   const angle = p5.map(Ease.elasticOut(beat.progress(position)), 0, 1, -5 - point.type * 2, 5 + point.type * 2);
-      //   p5.rotate(angle);
-      // }
       p5.fill(phrasePoints[0].color);
-      p5.textSize(Ease.quintOut(1 - openingProgress) * 200);
+      p5.fill([100, 100, 100, 250]);
+      p5.textSize(Ease.quintOut(1 - openingProgress) * titleCharSize);
       p5.text(player.data.song.name, 0, 0);
       p5.pop();
     }
@@ -325,50 +343,50 @@ new P5((p5) => {
       p5.stroke(0);
       p5.strokeWeight(5);
       // 五線譜の描画
-      p5.line(xmin, -200, -1, xmax, -200, -1);
-      p5.line(xmin, -100, -1, xmax, -100, -1);
+      p5.line(xmin, height * -1/5, -1, xmax, height * -1/5, -1);
+      p5.line(xmin, height * -1/10, -1, xmax, height * -1/10, -1);
       p5.line(xmin, 0, -1, xmax, 0, -1);
-      p5.line(xmin, 100, -1, xmax, 100, -1);
-      p5.line(xmin, 200, -1, xmax, 200, -1);
-      p5.line(xmin + 300, -200, -1, xmin + 300, 200, -1);
+      p5.line(xmin, height * 1/10, -1, xmax, height * 1/10, -1);
+      p5.line(xmin, height * 1/5, -1, xmax, height * 1/5, -1);
       // リピート記号の描画
-      p5.line(xmax - 80, -200, -1, xmax - 80, 200, -1);
+      p5.line(xmin + width * 3 / 20, height * -1 / 5, -1, xmin + width * 3 / 20, height * -1 / 5, -1);
+      p5.line(xmax - width * 1/25, height * -1/5, -1, xmax - width * 1/25, height * 1/5, -1);
       p5.strokeWeight(15);
-      p5.line(xmax - 50, -200, -1, xmax - 50, 200, -1);
+      p5.line(xmax - width * 1/40, height * -1/5, -1, xmax - width * 1/40, height * 1/5, -1);
       p5.noStroke();
-      p5.circle(xmax - 120, -50, 30);
-      p5.circle(xmax - 120, 50, 30);
+      p5.circle(xmax - width * 3/50, height * -1/20, width * 3/200);
+      p5.circle(xmax - width * 3/50, height * 1/20, width * 3/200);
       // 曲名/歌詞名の描画
       p5.textAlign(p5.CENTER, p5.CENTER);
-      p5.textSize(50);
-      p5.text(player.data.song.name, 0, -400)
-      p5.textSize(25);
-      p5.text(player.data.song.artist.name, 0, -340)
-      p5.textSize(20);
+      p5.textSize(width * 1/35);
+      p5.text(player.data.song.name, 0, height * -2/5)
+      p5.textSize(width * 1/70);
+      p5.text(player.data.song.artist.name, 0, height * -34/100)
       // 楽譜上にコード進行を描画
       if (cord) {
-        p5.push();
-        // p5.textSize(Ease.quintIn(cord.progress(position)) * 15 + 20);
-        p5.text(cord.name, 0, -220)
-        p5.pop();
+        p5.textAlign(p5.CENTER, p5.BUTTOM);
+        p5.textSize(width * 1/80);
+        p5.text(cord.name, 0, height * -11/50)
+ 
+        p5.textSize(width * 1/100);
         const prevCord = cord.previous;
         if (prevCord) {
-          p5.text(prevCord.name, -300, -220);
+          p5.text(prevCord.name, width * -3/20, height * -11/50);
           const prevCord2 = cord.previous.previous
           if (prevCord2) {
-            p5.text(prevCord2.name, -600, -220);
+            p5.text(prevCord2.name, width * -3/10, height * -11/50);
             const prevCord3 = cord.previous.previous.previous
-            if (prevCord3) p5.text(prevCord3.name, -900, -220);
+            if (prevCord3) p5.text(prevCord3.name, width * -9/20, height * -11/50);
           }
         }
         const nextCord = cord.next;
         if (nextCord) {
-          p5.text(nextCord.name, 300, -220);
+          p5.text(nextCord.name, width * 3/20, height * -11/50);
           const nextCord2 = cord.next.next
           if (nextCord2) {
-            p5.text(nextCord2.name, 600, -220);
+            p5.text(nextCord2.name, width * 3/10, height * -11/50);
             const nextCord3 = cord.next.next.next
-            if (nextCord3) p5.text(nextCord3.name, 900, -220);
+            if (nextCord3) p5.text(nextCord3.name, width * 9/20, height * -11/50);
           }
         }
       }
@@ -417,25 +435,33 @@ new P5((p5) => {
       //   3. 音譜の円陣を発散&曲のタイトルが飛び出す
       if (ending3Progress < 1) {
         points.forEach((point, i) => {
-          let r;
+          let x, y, r;
+          p5.push();
           if (ending1Progress < 1) {
-            r = 300;
+            r = height * 3/10;
+            x = p5.cos((position / 30 + (i * 360 / points.length))) * r;
+            y = p5.sin((position / 30 + (i * 360 / points.length))) * r;
             pointSize = point.size;
+          // ending1Progressが進む(1に近づく)毎に徐々に円陣へと変わっていく
+            p5.translate(point.x - (point.x - x) * ending1Progress, point.y - (point.y - y) * ending1Progress);
           }
           else if (ending2Progress < 1) {
-            r = 300 - ending2Progress * 250;
+            r = (height * 3/10) - ending2Progress * (height * 1/4);
+            x = p5.cos((position / 30 + (i * 360 / points.length))) * r;
+            y = p5.sin((position / 30 + (i * 360 / points.length))) * r;
             pointSize = point.size;
+            p5.translate(x, y);
           }
           else {
-            r = 50 + Ease.quintOut(ending3Progress) * 1500;
-            pointSize = point.size + Ease.quintOut(ending3Progress) * 250;
+            pointSize = point.size + Ease.quintOut(ending3Progress) * (height * 1/12);
+            r = (height * 1/20) + Ease.quintOut(ending3Progress) * (Math.min((width - pointSize) / 2, (height - pointSize) / 2) - (height * 1/20));
+            x = p5.cos((position / 30 + (i * 360 / points.length))) * r * 1.05;
+            y = p5.sin((position / 30 + (i * 360 / points.length))) * r - (pointSize / 6);
+            if (width > height) x *= width / height;
+            else y *= height / width;
+            p5.translate(x * Ease.quintOut(ending3Progress), y * Ease.quintOut(ending3Progress));
           }
-          const x = p5.cos((position / 30 + (i * 360 / points.length))) * r;
-          const y = p5.sin((position / 30 + (i * 360 / points.length))) * r;
-          p5.push();
           p5.fill(point.color);
-          // ending1Progressが進む(1に近づく)毎に徐々に円陣へと変わっていく
-          p5.translate(point.x - (point.x - x) * ending1Progress, point.y - (point.y - y) * ending1Progress);
           p5.textFont(font);
           p5.textSize(pointSize);
           p5.text(point.note, 0, 0);
@@ -445,8 +471,10 @@ new P5((p5) => {
       // 3段階目のエンディングが始まったら中央から曲名を飛び出させる
       if (ending3Progress>0) {
         p5.textAlign(p5.CENTER, p5.CENTER);
-        p5.fill(point.color);
-        p5.textSize(Ease.quintOut(ending3Progress) * 200);
+        // 終了までに全ての音譜の色をタイトルに付ける
+        const colorIndex = Math.floor((5000 - (videoEndTime - position)) / ((5000 / points.length)));
+        p5.fill(points[colorIndex].color);
+        p5.textSize(Ease.quintOut(ending3Progress) * titleCharSize);
         p5.text(player.data.song.name, 0, 0)
       }
     }
@@ -457,18 +485,15 @@ new P5((p5) => {
     if (phrase && phrase.endTime >= position) {
       // 歌詞を表示する位置の定義。サビの時は固定。サビ以外の時は事前に準備したランダムな座標。
       if (chorus) {
-        currentPoint.x = -font.textBounds(phrase.text, 0, 0, baseCharSize).w / 2;
-        currentPoint.y = 300;
+        currentPoint.x = Math.max(xmin, - phrase.charCount * (baseCharSize + charMargin) / 2);
+        currentPoint.y = height * 3/10;
         currentPoint.color[3] = 255;
       }
-      let x = currentPoint.x;
-      let y = currentPoint.y;
       p5.push();
-      p5.translate(x, y);
-
+      p5.translate(currentPoint.x, currentPoint.y);
       // 最初の1文字目は歌詞ではなく音譜を表示する。音譜はビートに合わせて震わせる
       if (beat) {
-        pointSize = 70 + Ease.quintIn(beat.progress(position)) * 70;
+        pointSize = (width * 8/200) + Ease.quintIn(beat.progress(position)) * (width * 8/200);
         const angle = p5.map(Ease.elasticOut(beat.progress(position)), 0, 1, -5 - currentPoint.type * 2, 5 + currentPoint.type * 2);
         p5.rotate(angle);
       }
@@ -477,7 +502,9 @@ new P5((p5) => {
       p5.textSize(pointSize);
       p5.text(currentPoint.note, 0, 0);
       p5.pop();
-      x += baseCharSize + charMargin;
+      const startX = currentPoint.x + baseCharSize + charMargin;
+      let x = startX;
+      let y = currentPoint.y;
 
       // 歌詞を1文字ずつ描画
       let char = phrase.firstChar;
@@ -498,7 +525,7 @@ new P5((p5) => {
         x += baseCharSize + charMargin;
         // 文字がはみ出たときは1段下げて表示
         if (x + p5.textWidth(char.text) + charMargin > xmax) {
-          x = currentPoint.x;
+          x = startX;
           y += baseCharSize + charMargin;
         }
         char = char.next;
@@ -506,20 +533,26 @@ new P5((p5) => {
     }
   }
   p5.mouseClicked = () => {
-    if (player && player.isPlaying && !player.isLoading) {
+    if (player && player.isPlaying && !player.isLoading && !isEnding) {
       const ignoreArea = Math.max(openSettingsBtn.offsetHeight, settings.offsetHeight)
-      console.log(ignoreArea);
       if (p5.mouseY < height - ignoreArea) {
-        const color = [randInt(0, 255), randInt(0, 255), randInt(0, 255), randInt(150, 255)];
-        const size = randInt(50, 120);
-        const noteList = ["♩", "♪", "♫", "♬", "♭", "♯", "♮"];
-        const type = randInt(0, noteList.length - 1);
-        const note = noteList[type];
-        const x = p5.mouseX - width / 2 ;
+        const ml = p5.mouseX - width / 4;
+        const mt = p5.mouseY - height / 4;
+        const x = p5.mouseX - width / 2;
         const y = p5.mouseY - height / 2;
-        extPoints.push({ "type": type, "note": note, 'x': x, 'y': y, 'color': color, 'size': size, "vx": 0, "vy": 0 });
-        if (extPoints.length > 15) extPoints.shift();
+        const popElement = document.querySelector("#pop");
+        popElement.style.marginLeft = ml;
+        popElement.style.marginTop = mt;
+        lottiePopAnimation.goToAndPlay(500);
+        extPoints.push(createPointObj(x, y));
+        if (extPoints.length > 20) extPoints.shift();
       }
+    }
+  }
+
+  p5.keyTyped = () => {
+    if (!isEnding && p5.key == "d") {
+      extPoints = [];
     }
   }
 });
@@ -545,37 +578,45 @@ const setVideoData = () => {
   interludes = getInterludes(video.phrases, videoEndTime);
   choruses = player.getChoruses();
   maxAmp = player.getMaxVocalAmplitude();
+  titleCharSize = (width * 0.8) / player.data.song.name.split("").length
 }
+
+/**
+ * ポイント(音譜)オブジェクトを生成する。xとyの座標は引数から受け取る
+ *
+ * @param {number}} x - オブジェクトのx座標
+ * @param {number}} y - オブジェクトのy座標
+*/
+const createPointObj = (x, y) => {
+  const noteList = ["♩", "♪", "♫", "♬", "♭", "♯", "♮"];
+  const color = [randInt(0, 255), randInt(0, 255), randInt(0, 255), randInt(200, 255)];
+  const size = randInt(width * 1/30, width * 3/50);
+  const type = randInt(0, noteList.length - 1);
+  const note = noteList[type];
+  return { "type": type, "note": note, "x": x, "y": y, "color": color, "size": size, "vx": 0, "vy": 0 };
+}
+
 
 const getPhrasePoints = (num) => {
   let result = [];
-  const noteList = ["♩", "♪", "♫", "♬", "♭", "♯", "♮"];
+  let prevX = 0;
+  let prevY = 0;
+  let isIgnoreArea = false;
+  let isIgnoreArea2 = false;
+  let isCloseDistance = false;
+  let x, y;
   for (let i = 0; i < num; i++){
-    let x, y;
-    const section = randInt(0,3);
-    if (section == 0) {
-      x = randInt(xmin + 50, 0);
-      y = randInt(ymin + 100, 0);
-    }
-    if (section == 1) {
-      x = randInt(xmin + 50, 0);
-      y = randInt(0, ymax - 100);
-    }
-    if (section == 2) {
-      x = randInt(0, xmax - 300);
-      y = randInt(ymin + 100, 0);
-    }
-    if (section == 3) {
-      x = randInt(0, xmax - 500);
-      y = randInt(0, ymax - 300);
-    }
-    const color = [randInt(0, 255), randInt(0, 255), randInt(0, 255), randInt(150, 255)];
-    const size = randInt(50, 120);
-    const type = randInt(0, noteList.length - 1);
-    const note = noteList[type];
-    result.push({ "type": type, "note":note, "x": x, "y": y, "color": color, "size": size, "vx":0, "vy": 0});
+    // 歌詞が見切れる隅のエリアや、1つ前の要素と距離が近いところは避けてランダムな位置を生成する
+    do {
+      x = randInt(xmin + width * 1 / 40, xmax - width * 3 / 20);
+      y = randInt(ymin + height * 1 / 15, ymax - height * 1 / 10);
+      isIgnoreArea = (x > (xmax - width * 1 / 3) && y > (ymax - height * 2 / 5));
+      isIgnoreArea2 = (x > (xmax - width * 1 / 2) && y < (ymin + height * 1 / 5));
+      isCloseDistance = Math.sqrt(Math.pow(prevX - x, 2) + Math.pow(prevY - y, 2)) < width * 1 / 10;
+    } while (isIgnoreArea || isIgnoreArea2 || isCloseDistance);
+    result.push(createPointObj(x, y));
   }
-  // 1フレーズ目は中央に
+  // 1フレーズ目は中央に固定で配置する
   result[0].x = 0;
   result[0].y = 0;
   return result
@@ -583,13 +624,16 @@ const getPhrasePoints = (num) => {
 
 const updatePoints = (position, points, beat) => {
   for (let i = 0; i < points.length; i++) {
-    points[i].x = points[i].x + (Ease.quintIn(beat.progress(position))) * 5 * points[i].vx;
+    points[i].x = points[i].x + (Ease.quintIn(beat.progress(position))) * width/400 * points[i].vx;
     if (points[i].x > xmax) {
       points[i].x = xmin;
     }
-    points[i].y = points[i].y + Ease.quintIn(beat.progress(position)) * 20 * points[i].vy
-    if (points[i].y > ymax || points[i].y < ymin) {
-      points[i].vy = -1 * points[i].vy;
+    points[i].y = points[i].y + Ease.quintIn(beat.progress(position)) * height/50 * points[i].vy
+    if (points[i].y > ymax - points[i].size) {
+      points[i].vy = -1;
+    }
+    if (points[i].y < ymin + points[i].size/2) {
+      points[i].vy = 1;
     }
   }
   return points;

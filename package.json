@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/takanosuke/magicalmirai2021-procon#readme",
   "dependencies": {
+    "lottie-web": "^5.7.13",
     "npm": "^7.21.0",
     "p5": "^1.4.0",
     "textalive-app-api": "^0.3.0"
