@@ -1,3 +1,8 @@
+html,
+body {
+  overflow: hidden;
+}
+
 body {
   margin: 0;
 }
@@ -27,6 +32,7 @@ canvas {
 }
 
 #pop {
+  display: inline;
   z-index: -100;
 }
 

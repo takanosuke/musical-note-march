@@ -560,8 +560,8 @@ new P5((p5) => {
         lottiePopAnimation.goToAndPlay(500);
         // クリックした座標に音譜を追加する
         extPoints.push(createPointObj(x, y));
-        // 手動追加した音譜が20個より多いなら、追加順に削除する
-        if (extPoints.length > 20) extPoints.shift();
+        // 手動追加した音譜が15個より多いなら、追加順に削除する
+        if (extPoints.length > 15) extPoints.shift();
       }
     }
   }
