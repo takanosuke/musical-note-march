@@ -14,6 +14,8 @@ const xmin = -1 * xmax;
 const ymin = -1 * ymax;
 const SONG = require('./SONG');
 const defaultSong = SONG["濁茶 / 密かなる交信曲"];
+// 手動で追加できる音譜の数
+const extPointsNum = 30;
 let isChangingSong = false;
 let isClickSeekBar = false;
 let phrasePoints;
@@ -560,8 +562,8 @@ new P5((p5) => {
         lottiePopAnimation.goToAndPlay(500);
         // クリックした座標に音譜を追加する
         extPoints.push(createPointObj(x, y));
-        // 手動追加した音譜が15個より多いなら、追加順に削除する
-        if (extPoints.length > 15) extPoints.shift();
+        // 手動追加した音譜が指定した数より多いなら、追加順に削除する
+        if (extPoints.length > extPointsNum) extPoints.shift();
       }
     }
   }
