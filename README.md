@@ -12,7 +12,7 @@
 ## 使用方法
 ### 利用準備
 * 前提として、Node.jsがインストールされていること。(※動作確認をしたバージョンはnpm@7.20.0です)
-* 以下のコマンドでプロジェクトのクローンと必要なモジュールをインストールします。
+* 以下のコマンドでプロジェクトのクローンと必要なモジュールのインストールをします。
 <pre>
 git clone https://github.com/takanosuke/musical-note-march.git
 cd musical-note-march/
